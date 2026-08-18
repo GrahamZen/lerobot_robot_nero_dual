@@ -1,0 +1,12 @@
+pyproject.toml
+lerobot_robot_nero_dual/__init__.py
+lerobot_robot_nero_dual/agx_dual_arm.py
+lerobot_robot_nero_dual/config_nero_dual.py
+lerobot_robot_nero_dual/config_nero_dual_leader.py
+lerobot_robot_nero_dual/nero_dual.py
+lerobot_robot_nero_dual/nero_dual_leader.py
+lerobot_robot_nero_dual.egg-info/PKG-INFO
+lerobot_robot_nero_dual.egg-info/SOURCES.txt
+lerobot_robot_nero_dual.egg-info/dependency_links.txt
+lerobot_robot_nero_dual.egg-info/requires.txt
+lerobot_robot_nero_dual.egg-info/top_level.txt

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_robot_nero_dual"
+version = "0.1.0"
+description = "LeRobot plugin for AgileX Nero dual-arm robot (7-DoF x2) and teleoperator (pyAgxArm backend)"
+requires-python = ">=3.10"
+dependencies = [
+    "lerobot",
+    "pyAgxArm @ git+https://github.com/agilexrobotics/pyAgxArm",
+    "python-can>=3.3.5",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lerobot_robot_nero_dual*"]
