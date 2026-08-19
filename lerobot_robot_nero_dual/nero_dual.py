@@ -48,6 +48,7 @@ class NeroDual(Robot):
             firmware=self.config.firmware,
             interface=self.config.can_interface,
             gripper_force_n=self.config.gripper_force_n,
+            speed_percent=self.config.speed_percent,
         )
 
     # ------------------------------ 特征 ------------------------------- #
@@ -164,7 +165,7 @@ class NeroDual(Robot):
             self._writer.send_target(targets)
         else:
             for s in SIDES:
-                self.units[s].write_joints_js(targets[s])
+                self.units[s].write_joints(targets[s])
         for s in SIDES:  # 夹爪按策略频率直发，去抖：变化 <0.5mm 不重发
             g = min(max(float(grippers[s]), 0.0), self.config.gripper_max_m)
             if self._last_gripper[s] is None or abs(g - self._last_gripper[s]) > 5e-4:

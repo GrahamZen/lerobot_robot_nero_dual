@@ -19,9 +19,11 @@ class NeroDualConfig(RobotConfig):
     firmware: str = "default"     # get_firmware() 可查；NeroFW 常量对照 SDK 文档
     can_interface: str = "socketcan"
     read_only: bool = False
-    # move_js 为 MIT 直通、无平滑 —— 高频插值线程见 agx_dual_arm.py
-    control_hz: int = 200
+    # 缺省 0 = send_action 直接写一拍（位置模式 move_j，控制器自带规划）。
+    # MIT 模式（move_js）无平滑、风险极高且模式残留，不作默认路径。
+    control_hz: int = 0
     policy_hz: int = 30
+    speed_percent: int = 50      # 位置模式速度百分比
     gripper_max_m: float = 0.08   # 标定后按实际行程改（SDK 支持 0.07/0.1）
     gripper_force_n: float = 1.0
     cameras: dict[str, CameraConfig] = field(

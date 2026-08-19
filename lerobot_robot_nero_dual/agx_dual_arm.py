@@ -4,11 +4,15 @@ SDK: github.com/agilexrobotics/pyAgxArm —— Piper 与 Nero 统一 API。
 单位约定（与旧 piper_sdk 实现保持一致，数据集无缝衔接）：
     关节: rad · 夹爪: m（0~行程） · 力矩: N·m
 
-控制路径：
-    joints  → move_js()（MIT 直通模式，无平滑）——因此保留高频插值线程：
-              send_target() 只更新目标，后台线程以 control_hz 在上一目标与
-              新目标之间线性插值下发，消除 <30Hz 指令的抖动（旧实现同款设计）。
-    gripper → move_gripper_m()，按策略频率直发（不进高频线程，避免刷爆 CAN）。
+控制路径（与旧 piper_sdk 实现严格等价，见 legacy/motors/piper_slave.py）：
+    joints  → **move_j()：位置模式（MOVE J），控制器侧自带轨迹规划/平滑**，
+              配 set_speed_percent(speed_percent)（旧实现 MotionCtrl_2(1, 1, 50, 0)
+              = 位置模式 + 50% 速度 + mit_mode 关闭）。
+              绝不默认用 move_js —— 那是 move_j + mit_mode，SDK 自己标注
+              "无平滑、无轨迹规划、可能剧烈震荡、风险极高"，实测会让除末端外
+              的关节持续抖动，且模式会残留在控制器上（位置模式工具随后失效）。
+              需要 MIT 时显式调 write_joints_mit()，自行承担风险。
+    gripper → move_gripper_m()，按策略频率直发（避免刷爆 CAN）。
 """
 
 from __future__ import annotations
@@ -30,6 +34,7 @@ class AgxArmUnit:
         firmware: str = "default",
         interface: str = "socketcan",
         gripper_force_n: float = 1.0,
+        speed_percent: int = 50,
     ) -> None:
         from pyAgxArm import AgxArmFactory, create_agx_arm_config
 
@@ -40,6 +45,7 @@ class AgxArmUnit:
         self.gripper = self.arm.init_effector(self.arm.OPTIONS.EFFECTOR.AGX_GRIPPER)
         self.channel = channel
         self.gripper_force_n = gripper_force_n
+        self.speed_percent = speed_percent
         self.n_joints: int = self.arm.joint_nums
         self._connected = False
 
@@ -53,7 +59,15 @@ class AgxArmUnit:
                 if time.monotonic() - t0 > timeout_s:
                     raise TimeoutError(f"[{self.channel}] enable timeout ({timeout_s}s)")
                 time.sleep(0.01)
+            # 位置模式 + 限速：也把上一次进程可能残留在控制器上的 MIT 模式清掉
+            self.set_position_mode()
         self._connected = True
+
+    def set_position_mode(self) -> None:
+        """强制位置模式（MOVE J）+ 限速。MIT 模式会残留在控制器上，必须显式复位。"""
+        self.arm.set_speed_percent(int(self.speed_percent))
+        self.arm.set_motion_mode(self.arm.OPTIONS.MOTION_MODE.J)
+        logger.info("[%s] 位置模式 (MOVE J), 速度 %d%%", self.channel, self.speed_percent)
 
     def set_leader_mode(self) -> None:
         self.arm.set_leader_mode()
@@ -93,7 +107,12 @@ class AgxArmUnit:
 
     # ------------------------------ 写 -------------------------------- #
 
-    def write_joints_js(self, joints: list[float]) -> None:
+    def write_joints(self, joints: list[float]) -> None:
+        """位置模式下发（默认路径）。控制器自带规划，30Hz 直发即可平滑。"""
+        self.arm.move_j(list(joints))
+
+    def write_joints_mit(self, joints: list[float]) -> None:
+        """MIT 直通下发 —— 无平滑、风险极高，且模式会残留。仅在明确需要时使用。"""
         self.arm.move_js(list(joints))
 
     def write_gripper(self, width_m: float) -> None:
@@ -107,7 +126,7 @@ class InterpolatedJointWriter:
     """高频插值下发线程（两臂共用一个线程，保持左右同步）。
 
     send_target() 以策略频率被调；线程以 control_hz 把上一次真正下发的
-    关节值向最新目标线性插值（插值窗口 = 1/policy_hz），逐拍 move_js。
+    关节值向最新目标线性插值（插值窗口 = 1/policy_hz），逐拍位置模式下发。
     """
 
     def __init__(
@@ -164,7 +183,7 @@ class InterpolatedJointWriter:
                     cmds = {}
             for side, q in cmds.items():
                 try:
-                    self.units[side].write_joints_js(q)
+                    self.units[side].write_joints(q)
                 except Exception:
                     logger.exception("interp write failed (%s)", side)
             dt = time.monotonic() - t0
