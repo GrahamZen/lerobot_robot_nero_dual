@@ -10,6 +10,7 @@ class NeroDualLeaderConfig(TeleoperatorConfig):
 
     left_port: str = "can_l_leader"
     right_port: str = "can_r_leader"
-    firmware: str = "default"
+    firmware: str = "auto"        # 同 NeroDualConfig.firmware
     can_interface: str = "socketcan"
     set_leader_mode_on_connect: bool = True
+    connect_timeout_s: float = 3.0  # 等主手控制帧的超时

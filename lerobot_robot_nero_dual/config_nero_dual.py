@@ -16,7 +16,10 @@ class NeroDualConfig(RobotConfig):
 
     left_port: str = "can_left"
     right_port: str = "can_right"
-    firmware: str = "default"     # get_firmware() 可查；NeroFW 常量对照 SDK 文档
+    # "auto" = 连接时 get_firmware() 自动选档位（同官方 agx_arm_ros）。
+    # 手动指定：default(≤1.10) / v111 / v112 / v120 / v121(≥1.21)，
+    # 可用 `python -m lerobot_robot_nero_dual.probe` 查。
+    firmware: str = "auto"
     can_interface: str = "socketcan"
     read_only: bool = False
     # 缺省 0 = send_action 直接写一拍（位置模式 move_j，控制器自带规划）。
