@@ -18,8 +18,22 @@ def _fmt(msg) -> str:
     return f"{msg.hz:5.0f}Hz [{', '.join(f'{q:+.2f}' for q in msg.msg)}]"
 
 
+def _socketcan_state(channel: str) -> str | None:
+    """None = 正常 UP；否则返回问题描述。"""
+    try:
+        with open(f"/sys/class/net/{channel}/flags") as f:
+            flags = int(f.read().strip(), 16)
+    except FileNotFoundError:
+        return "不存在（ip -br link show type can 看名字）"
+    return None if flags & 0x1 else "DOWN（先按 README 3.2 以 1Mbps 拉起）"
+
+
 def probe(channel: str, listen_s: float, interface: str) -> None:
     from pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
+
+    if interface == "socketcan" and (problem := _socketcan_state(channel)):
+        print(f"{channel:14s} {problem}")
+        return
 
     def make(firmware: str):
         cfg = create_agx_arm_config(

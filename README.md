@@ -60,6 +60,9 @@ cd lerobot_robot_nero_dual
 uv venv --python 3.12
 source .venv/bin/activate
 uv pip install -e . "lerobot[dataset]>=0.6.1,<0.7"
+# 默认会装 cu130 的 torch；驱动只到 CUDA 12.x 时（droplab2 是 575 / 12.9）换成 cu128，
+# 否则 torch.cuda.is_available() 为 False（遥操/录数据不需要 GPU，跑策略需要）
+uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu128
 ```
 
 验证：
